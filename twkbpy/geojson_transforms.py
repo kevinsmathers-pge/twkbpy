@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 import itertools
 
-import constants
+from .constants import Constants
 
 
 type_map = {}
-type_map[constants.POINT] = 'Point'
-type_map[constants.LINESTRING] = 'LineString'
-type_map[constants.POLYGON] = 'Polygon'
+type_map[Constants.POINT] = 'Point'
+type_map[Constants.LINESTRING] = 'LineString'
+type_map[Constants.POLYGON] = 'Polygon'
 
 
 # Create GeoJSON Geometry object from TWKB type and coordinate array
@@ -30,16 +30,16 @@ def to_coords(coordinates, ndims):
 
 
 def create_point(coordinates, ndims):
-    return create_geometry(constants.POINT, to_coords(coordinates, ndims)[0])
+    return create_geometry(Constants.POINT, to_coords(coordinates, ndims)[0])
 
 
 def create_linestring(coordinates, ndims):
-    return create_geometry(constants.LINESTRING, to_coords(coordinates, ndims))
+    return create_geometry(Constants.LINESTRING, to_coords(coordinates, ndims))
 
 
 def create_polygon(coordinates, ndims):
     coords = [to_coords(c, ndims) for c in coordinates]
-    return create_geometry(constants.POLYGON, coords)
+    return create_geometry(Constants.POLYGON, coords)
 
 
 def create_feature(type, coordinates, id, ndims):
@@ -58,15 +58,15 @@ def create_features_from_multi(type, geoms, ids, ndims):
 
 
 def create_multipoint(geoms, ids, ndims):
-    return create_features_from_multi(constants.POINT, geoms, ids, ndims)
+    return create_features_from_multi(Constants.POINT, geoms, ids, ndims)
 
 
 def create_multilinestring(geoms, ids, ndims):
-    return create_features_from_multi(constants.LINESTRING, geoms, ids, ndims)
+    return create_features_from_multi(Constants.LINESTRING, geoms, ids, ndims)
 
 
 def create_multipolygon(geoms, ids, ndims):
-    return create_features_from_multi(constants.POLYGON, geoms, ids, ndims)
+    return create_features_from_multi(Constants.POLYGON, geoms, ids, ndims)
 
 
 def create_features_from_collection(geoms, ids, ndims):
@@ -79,10 +79,10 @@ def create_collection(geoms, ids, ndims):
 
 
 transforms = {}
-transforms[constants.POINT] = create_point
-transforms[constants.LINESTRING] = create_linestring
-transforms[constants.POLYGON] = create_polygon
-transforms[constants.MULTIPOINT] = create_multipoint
-transforms[constants.MULTILINESTRING] = create_multilinestring
-transforms[constants.MULTIPOLYGON] = create_multipolygon
-transforms[constants.COLLECTION] = create_collection
+transforms[Constants.POINT] = create_point
+transforms[Constants.LINESTRING] = create_linestring
+transforms[Constants.POLYGON] = create_polygon
+transforms[Constants.MULTIPOINT] = create_multipoint
+transforms[Constants.MULTILINESTRING] = create_multilinestring
+transforms[Constants.MULTIPOLYGON] = create_multipolygon
+transforms[Constants.COLLECTION] = create_collection

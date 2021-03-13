@@ -33,7 +33,7 @@ print next(g)
 print next(g)
 '''
 for b in byte_gen(stream):
-    print ':', b
+    print(':', b)
 
 '''
 with io.open('komm.twkb', 'rb') as stream:

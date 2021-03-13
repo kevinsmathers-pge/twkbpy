@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from geojson_transforms import transforms
-from read_buffer import read_buffer
+from .geojson_transforms import transforms
+from .read_buffer import read_buffer
 
 
 def byte_gen(stream):
@@ -13,6 +13,8 @@ def byte_gen(stream):
 
 
 class Decoder:
+    def __init__(self):
+        pass
 
     def decode(self, stream):
 

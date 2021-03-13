@@ -1,7 +1,7 @@
 import math
 
-import constants
-from protobuf import unzigzag, read_varsint64, read_varint64
+from .constants import Constants
+from .protobuf import unzigzag, read_varsint64, read_varint64
 
 
 def read_pa(ta_struct, npoints):
@@ -104,25 +104,25 @@ def read_objects(ta_struct):
     for i in range(0, ta_struct['ndims'] + 1):
         ta_struct['refpoint'][i] = 0
 
-    if type == constants.POINT:
+    if type == Constants.POINT:
         return parse_point(ta_struct)
 
-    if type == constants.LINESTRING:
+    if type == Constants.LINESTRING:
         return parse_line(ta_struct)
 
-    if type == constants.POLYGON:
+    if type == Constants.POLYGON:
         return parse_polygon(ta_struct)
 
-    if type == constants.MULTIPOINT:
+    if type == Constants.MULTIPOINT:
         return parse_multi(ta_struct, parse_point)
 
-    if type == constants.MULTILINESTRING:
+    if type == Constants.MULTILINESTRING:
         return parse_multi(ta_struct, parse_line)
 
-    if type == constants.MULTIPOLYGON:
+    if type == Constants.MULTIPOLYGON:
         return parse_multi(ta_struct, parse_polygon)
 
-    if type == constants.COLLECTION:
+    if type == Constants.COLLECTION:
         return parse_collection(ta_struct)
 
     raise TypeError('Unknown type: %s' % type)
