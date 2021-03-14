@@ -1,19 +1,45 @@
 import math
+from typing import Callable, List, Any
+from dataclasses import dataclass
 
-from .constants import Constants
+from .context import DecoderContext
+from .constants import GeometryType
 from .protobuf import unzigzag, read_varsint64, read_varint64
+from .context import DecoderContext
 
+class GeometryShape:
+    def __init__(self, 
+            type : GeometryType, 
+            ndims : int = 0,            # 2D/3D 
+ #           dims : List[int] = [], 
+            ids : List[int] = [], 
+            geoms : List[Any] = [], 
+            coordinates : List[float] = [] 
+            ) :
+        self.type = type
+        self.ndims = ndims
+ #       self.dims = dims
+        self.ids = ids
+        self.geoms = geoms
+        self.coordinates = coordinates
 
-def read_pa(ta_struct, npoints):
+def read_pa(ta_struct : DecoderContext, npoints : int) -> List[float]:
+    """
+    Reads an array of delta compressed integers from the decoder context
+    and scales them back into coordinates
 
-    ndims = ta_struct['ndims']
-    factors = ta_struct['factors']
-    coords = [None] * (npoints * ndims)
+    Returns:
+        coords : List[float]
+    """
+    #print("read_pa")
+    ndims = ta_struct.ndims
+    factors = ta_struct.factors
+    coords = [0.0] * (npoints * ndims)
 
     for i in range(0, npoints):
         for j in range(0, ndims):
-            ta_struct['refpoint'][j] += read_varsint64(ta_struct)
-            coords[ndims * i + j] = ta_struct['refpoint'][j] / factors[j]
+            ta_struct.refpoint[j] += read_varsint64(ta_struct)
+            coords[ndims * i + j] = ta_struct.refpoint[j] / factors[j]
 
     '''
     # calculates the bbox if it hasn't it
@@ -34,155 +60,184 @@ def read_pa(ta_struct, npoints):
     return coords
 
 
-def read_id_list(ta_struct, n):
+def read_id_list(ta_struct : DecoderContext, n : int) -> List[int]:
+    """
+    Reads a list of IDs
+    """
+    #print("read_id_list")
     id_list = []
     for i in range(0, n):
         id_list.append(read_varsint64(ta_struct))
     return id_list
 
 
-def parse_point(ta_struct):
-    return read_pa(ta_struct, 1)
+def parse_point(ta_struct : DecoderContext) -> GeometryShape:
+    """
+    Reads and parses the bytes for a single point
+
+    Returns:
+        GeometryShape - coordinates for the single point that was read
+    """
+    #print("parse_point")
+    return GeometryShape(type = GeometryType.POINT, coordinates = read_pa(ta_struct, 1))
 
 
-def parse_line(ta_struct):
+def parse_line(ta_struct : DecoderContext) -> GeometryShape:
+    """
+    Reads and parses bytes that form a polyline
+
+    Returns:
+        GeometryShape - coordinates for a piecewise linear series of points
+    """
+    #print("parse_line")
     npoints = read_varint64(ta_struct)
-    return read_pa(ta_struct, npoints)
+    return GeometryShape(type = GeometryType.LINESTRING, coordinates = read_pa(ta_struct, npoints))
 
+def parse_polygon(ta_struct : DecoderContext) -> GeometryShape:
+    """
+    Reads and parses bytes the form a polygon
 
-def parse_polygon(ta_struct):
-    coordinates = []
+    Returns:
+        GeometryShape - coordinates for a series of polygon rings
+    """
+    #print("parse_polygon")
+    coords = []
     nrings = read_varint64(ta_struct)
     for ring in range(0, nrings):
-        coordinates.append(parse_line(ta_struct))
-    return coordinates
+        coords.append(parse_line(ta_struct))
+    return GeometryShape(type = GeometryType.POLYGON, coordinates = coords)
 
-
-def parse_multi(ta_struct, parser):
-    type = ta_struct['type']
+def parse_multi(ta_struct : DecoderContext, 
+                parser : Callable[[DecoderContext], GeometryShape]) -> GeometryShape :
+    """
+    Reads and parses bytes that form a multi-entity geometry
+    """
+    #print("parse_multi")
+    if ta_struct.type is None: raise ValueError("Can't parse unknown type")
+    type = ta_struct.type
     ngeoms = read_varint64(ta_struct)
-    geoms = []
+    geoms : List[GeometryShape] = []
     id_list = []
-    if ta_struct['has_idlist']:
+    if ta_struct.has_idlist:
         id_list = read_id_list(ta_struct, ngeoms)
 
     for i in range(0, ngeoms):
         geo = parser(ta_struct)
         geoms.append(geo)
-    return {
-        'type': type,
-        'ids': id_list,
-        'geoms': geoms
-    }
 
+    return GeometryShape(
+        type=type,
+        ids=id_list,
+        geoms=geoms
+    )
 
-def parse_collection(ta_struct):
-    geom_type = ta_struct['type']
+def parse_collection(ta_struct : DecoderContext) -> GeometryShape:
+    #print("parse_collection")
+    if ta_struct.type is None: raise ValueError("Can't parse unknown type")
+    geom_type = ta_struct.type
     ngeoms = read_varint64(ta_struct)
-    geoms = []
+    geoms : List[GeometryShape] = []
     id_list = []
-    if ta_struct['has_idlist']:
+    if ta_struct.has_idlist:
         id_list = read_id_list(ta_struct, ngeoms)
 
     for i in range(0, ngeoms):
         geo = read_buffer(ta_struct)
-        geoms.append({
-            'type': ta_struct['type'],
-            'coordinates': geo
-        })
+        geoms.append(geo)
 
-    return {
-        'type': geom_type,
-        'ids': id_list,
-        'ndims': ta_struct['ndims'],
-        'geoms': geoms
-    }
+    return GeometryShape(
+        type = geom_type,
+        ids = id_list,
+        ndims = ta_struct.ndims,
+        geoms = geoms
+    )
 
+def read_objects(ta_struct : DecoderContext) -> GeometryShape:
+    #print("read_objects")
+    type = ta_struct.type
+    for i in range(0, ta_struct.ndims + 1):
+        ta_struct.refpoint[i] = 0
 
-def read_objects(ta_struct):
-    type = ta_struct['type']
-    for i in range(0, ta_struct['ndims'] + 1):
-        ta_struct['refpoint'][i] = 0
-
-    if type == Constants.POINT:
+    if type == GeometryType.POINT:
         return parse_point(ta_struct)
 
-    if type == Constants.LINESTRING:
+    if type == GeometryType.LINESTRING:
         return parse_line(ta_struct)
 
-    if type == Constants.POLYGON:
+    if type == GeometryType.POLYGON:
         return parse_polygon(ta_struct)
 
-    if type == Constants.MULTIPOINT:
+    if type == GeometryType.MULTIPOINT:
         return parse_multi(ta_struct, parse_point)
 
-    if type == Constants.MULTILINESTRING:
+    if type == GeometryType.MULTILINESTRING:
         return parse_multi(ta_struct, parse_line)
 
-    if type == Constants.MULTIPOLYGON:
+    if type == GeometryType.MULTIPOLYGON:
         return parse_multi(ta_struct, parse_polygon)
 
-    if type == Constants.COLLECTION:
+    if type == GeometryType.COLLECTION:
         return parse_collection(ta_struct)
 
     raise TypeError('Unknown type: %s' % type)
 
 
-def read_buffer(ta_struct):
+def read_buffer(ta_struct : DecoderContext) -> GeometryShape:
+    #print("read_buffer")
     has_z = 0
     has_m = 0
 
-    flag = next(ta_struct['stream'])
+    flag = ta_struct.next()
 
     precision_xy = unzigzag((flag & 0xF0) >> 4)
-    ta_struct['type'] = flag & 0x0F
-    ta_struct['factors'] = [None] * 4
+    ta_struct.type = GeometryType(flag & 0x0F)
+    ta_struct.factors = [ 0.0 ] * 4
     precision_xy = math.pow(10, precision_xy)
-    ta_struct['factors'][0] = precision_xy
-    ta_struct['factors'][1] = precision_xy
+    ta_struct.factors[0] = precision_xy
+    ta_struct.factors[1] = precision_xy
 
     # Metadata header
-    flag = next(ta_struct['stream'])
+    flag = ta_struct.next()
 
-    ta_struct['has_bbox'] = flag & 0x01
-    ta_struct['has_size'] = (flag & 0x02) >> 1
-    ta_struct['has_idlist'] = (flag & 0x04) >> 2
-    ta_struct['is_empty'] = (flag & 0x10) >> 4
+    ta_struct.has_bbox = ((flag & 0x01) != 0)
+    ta_struct.has_size = ((flag & 0x02) != 0)
+    ta_struct.has_idlist = ((flag & 0x04) != 0)
+    ta_struct.is_empty = ((flag & 0x10) != 0)
 
-    extended_dims = (flag & 0x08) >> 3
+    extended_dims = (flag & 0x08) != 0
 
     # the geometry has Z and/or M coordinates
     if extended_dims:
-        extended_dims_flag = next(ta_struct['stream'])
+        extended_dims_flag = ta_struct.next()
 
         # Strip Z/M presence and precision from ext byte
-        has_z = (extended_dims_flag & 0x01)
-        has_m = (extended_dims_flag & 0x02) >> 1
+        has_z = (extended_dims_flag & 0x01) != 0
+        has_m = (extended_dims_flag & 0x02) != 0
         precision_z = (extended_dims_flag & 0x1C) >> 2
         precision_m = (extended_dims_flag & 0xE0) >> 5
 
         # Convert the precision into factor
         if has_z:
-            ta_struct['factors'][2] = math.pow(10, precision_z)
+            ta_struct.factors[2] = math.pow(10, precision_z)
         if has_m:
-            ta_struct['factors'][2 + has_z] = math.pow(10, precision_m)
+            ta_struct.factors[2 + has_z] = math.pow(10, precision_m)
         # store in the struct
-        ta_struct['has_z'] = has_z
-        ta_struct['has_m'] = has_m
+        ta_struct.has_z = has_z
+        ta_struct.has_m = has_m
 
     ndims = 2 + has_z + has_m
-    ta_struct['ndims'] = ndims
+    ta_struct.ndims = ndims
 
-    if ta_struct['has_size']:
-        ta_struct['size'] = read_varint64(ta_struct)
+    if ta_struct.has_size:
+        ta_struct.size = read_varint64(ta_struct)
 
-    if ta_struct['has_bbox']:
-        bbox = [None] * (ndims * 2)
+    if ta_struct.has_bbox:
+        bbox = [ 0 ] * (ndims * 2)
         for i in range(0, ndims):
             min = read_varsint64(ta_struct)
             max = min + read_varsint64(ta_struct)
             bbox[i] = min
             bbox[i + ndims] = max
-        ta_struct['bbox'] = bbox
+        ta_struct.bbox = bbox
 
     return read_objects(ta_struct)

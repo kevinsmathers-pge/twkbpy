@@ -1,25 +1,28 @@
 # -*- coding: utf-8 -*-
 import itertools
 
-from .constants import Constants
+from .constants import GeometryType
 
 
 type_map = {}
-type_map[Constants.POINT] = 'Point'
-type_map[Constants.LINESTRING] = 'LineString'
-type_map[Constants.POLYGON] = 'Polygon'
+type_map[GeometryType.POINT] = 'Point'
+type_map[GeometryType.LINESTRING] = 'LineString'
+type_map[GeometryType.POLYGON] = 'Polygon'
 
+def get_type_string(type):
+    return type_map[type]
 
 # Create GeoJSON Geometry object from TWKB type and coordinate array
 def create_geometry(type, coordinates):
     return {
-        'type': type_map[type],
+        'type': get_type_string(type),
         'coordinates': coordinates
     }
 
-
-# TWKB flat coordinates to GeoJSON coordinates
 def to_coords(coordinates, ndims):
+    """
+    TWKB flat coordinates to GeoJSON coordinates
+    """
     coords = []
     for i in range(0, len(coordinates), ndims):
         pos = []
@@ -30,16 +33,16 @@ def to_coords(coordinates, ndims):
 
 
 def create_point(coordinates, ndims):
-    return create_geometry(Constants.POINT, to_coords(coordinates, ndims)[0])
+    return create_geometry(GeometryType.POINT, to_coords(coordinates, ndims)[0])
 
 
 def create_linestring(coordinates, ndims):
-    return create_geometry(Constants.LINESTRING, to_coords(coordinates, ndims))
+    return create_geometry(GeometryType.LINESTRING, to_coords(coordinates, ndims))
 
 
 def create_polygon(coordinates, ndims):
     coords = [to_coords(c, ndims) for c in coordinates]
-    return create_geometry(Constants.POLYGON, coords)
+    return create_geometry(GeometryType.POLYGON, coords)
 
 
 def create_feature(type, coordinates, id, ndims):
@@ -58,15 +61,15 @@ def create_features_from_multi(type, geoms, ids, ndims):
 
 
 def create_multipoint(geoms, ids, ndims):
-    return create_features_from_multi(Constants.POINT, geoms, ids, ndims)
+    return create_features_from_multi(GeometryType.POINT, geoms, ids, ndims)
 
 
 def create_multilinestring(geoms, ids, ndims):
-    return create_features_from_multi(Constants.LINESTRING, geoms, ids, ndims)
+    return create_features_from_multi(GeometryType.LINESTRING, geoms, ids, ndims)
 
 
 def create_multipolygon(geoms, ids, ndims):
-    return create_features_from_multi(Constants.POLYGON, geoms, ids, ndims)
+    return create_features_from_multi(GeometryType.POLYGON, geoms, ids, ndims)
 
 
 def create_features_from_collection(geoms, ids, ndims):
@@ -79,10 +82,10 @@ def create_collection(geoms, ids, ndims):
 
 
 transforms = {}
-transforms[Constants.POINT] = create_point
-transforms[Constants.LINESTRING] = create_linestring
-transforms[Constants.POLYGON] = create_polygon
-transforms[Constants.MULTIPOINT] = create_multipoint
-transforms[Constants.MULTILINESTRING] = create_multilinestring
-transforms[Constants.MULTIPOLYGON] = create_multipolygon
-transforms[Constants.COLLECTION] = create_collection
+transforms[GeometryType.POINT] = create_point
+transforms[GeometryType.LINESTRING] = create_linestring
+transforms[GeometryType.POLYGON] = create_polygon
+transforms[GeometryType.MULTIPOINT] = create_multipoint
+transforms[GeometryType.MULTILINESTRING] = create_multilinestring
+transforms[GeometryType.MULTIPOLYGON] = create_multipolygon
+transforms[GeometryType.COLLECTION] = create_collection

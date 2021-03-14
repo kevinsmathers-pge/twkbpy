@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from enum import Enum
 
-class Constants(Enum):
+class GeometryType(Enum):
     POINT = 1
     LINESTRING = 2
     POLYGON = 3
