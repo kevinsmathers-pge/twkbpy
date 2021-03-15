@@ -21,7 +21,7 @@ def byte_gen(stream):
 print("start")
 codec = twkb.Decoder()
 with io.open('komm.twkb', 'rb') as stream:   
-    codec.xdecode(stream)
+    codec.decode(stream)
 print("end")
 #print bytearray(stream.read(1))[0]
 #for b in stream:

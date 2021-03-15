@@ -23,6 +23,8 @@ class GeometryShape:
         self.geoms = geoms
         self.coordinates = coordinates
 
+
+
 def read_pa(ta_struct : DecoderContext, npoints : int) -> List[float]:
     """
     Reads an array of delta compressed integers from the decoder context
