@@ -3,13 +3,17 @@ import itertools
 
 from .constants import GeometryType
 from .read_buffer import GeometryShape
-
+from typing import Dict, Any
+import json
 
 class JsonFormatter:
     def __init__(self, geom : GeometryShape):
         self.obj = self.xform_geom(geom)
 
-    def xform_geom(self, geom : GeometryShape) -> GeometryShape:
+    def to_json(self):
+        return json.dumps(self.obj)
+
+    def xform_geom(self, geom : GeometryShape):
         if geom.type == GeometryType.POINT:
             obj = self.xform_point(geom)
         elif geom.type == GeometryType.MULTIPOINT:
@@ -24,8 +28,8 @@ class JsonFormatter:
             obj = self.xform_multipolygon(geom)
         elif geom.type == GeometryType.COLLECTION:
             obj = self.xform_collection(geom)
-        elif geom.type == GeometryType.FEATURECOLLECTION:
-            pass
+        # elif geom.type == GeometryType.FEATURECOLLECTION:
+        #     pass
         else:
             raise NotImplementedError(f"{geom.type} not implemented")
         return obj

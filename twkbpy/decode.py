@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from .geojson_transforms import transforms
-from .read_buffer import read_buffer
+from .geojson_transforms import JsonFormatter
+from .read_buffer import GeometryShape, read_buffer
 from .context import DecoderContext
 
 
@@ -9,13 +9,17 @@ class Decoder:
     def __init__(self):
         pass
 
-    def xdecode(self, stream):
+    def decode(self, stream):
         print("decode")
         ta_struct = DecoderContext(stream)
         features = []
 
         shape = read_buffer(ta_struct)
-        print(shape)
+        return shape
+
+    def to_geojson(self, shape : GeometryShape):
+        fmt = JsonFormatter(shape)
+        return fmt.xform_geom(shape)
         #for res in read_buffer(ta_struct):
         #    pass
         #     ndims = ta_struct.ndims
