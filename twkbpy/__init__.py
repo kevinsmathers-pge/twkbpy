@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from .decode import Decoder
 
-def decode(*args):
-    return Decoder().decode(*args)
+def decode(stream):
+    return Decoder().decode(stream)
 
-def to_geojson(*args):
-    decoder = Decoder()
-    return decoder.to_geojson(decoder.decode(*args))
+def to_geojson(stream):
+    _decoder = Decoder()
+    geoshape = _decoder.decode(stream)
+    return _decoder.to_geojson(geoshape)

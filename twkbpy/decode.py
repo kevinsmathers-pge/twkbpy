@@ -10,16 +10,15 @@ class Decoder:
         pass
 
     def decode(self, stream):
-        print("decode")
+        #print("decode")
         ta_struct = DecoderContext(stream)
-        features = []
-
         shape = read_buffer(ta_struct)
         return shape
 
     def to_geojson(self, shape : GeometryShape):
         fmt = JsonFormatter(shape)
         return fmt.xform_geom(shape)
+
         #for res in read_buffer(ta_struct):
         #    pass
         #     ndims = ta_struct.ndims

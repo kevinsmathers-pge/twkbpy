@@ -1,5 +1,5 @@
 import math
-from typing import Callable, List, Any
+from typing import Callable, List, Any, Optional
 from dataclasses import dataclass
 
 from .context import DecoderContext
@@ -10,20 +10,33 @@ from .context import DecoderContext
 class GeometryShape:
     def __init__(self, 
             type : GeometryType, 
-            ndims : int = 0,            # 2D/3D 
- #           dims : List[int] = [], 
-            ids : List[int] = [], 
-            geoms : List[Any] = [], 
-            coordinates : List[float] = [] 
+            dims : Optional[List[int]] = None, 
+            ids : Optional[List[int]] = None, 
+            geoms : Optional[List[Any]] = None, 
+            coordinates : Optional[List[float]] = None,
+            ndims : Optional[int] = None
             ) :
         self.type = type
-        self.ndims = ndims
- #       self.dims = dims
-        self.ids = ids
-        self.geoms = geoms
-        self.coordinates = coordinates
+        if not dims is None:
+           self.dims = dims
+        if not ids is None:
+            self.ids = ids
+        if not geoms is None:
+            self.geoms = geoms
+        if not coordinates is None:
+            self.coordinates = coordinates
+        if not ndims is None:
+            self._ndims = ndims
 
+    @property
+    def ndims(self):
+        return self._ndims
 
+    @ndims.setter
+    def ndims(self, value : int):
+        self._ndims = value
+
+DEBUG=False
 
 def read_pa(ta_struct : DecoderContext, npoints : int) -> List[float]:
     """
@@ -33,8 +46,10 @@ def read_pa(ta_struct : DecoderContext, npoints : int) -> List[float]:
     Returns:
         coords : List[float]
     """
-    #print("read_pa")
+    if DEBUG:
+        print("read_pa")
     ndims = ta_struct.ndims
+    assert(ndims != 0)
     factors = ta_struct.factors
     coords = [0.0] * (npoints * ndims)
 
@@ -66,9 +81,10 @@ def read_id_list(ta_struct : DecoderContext, n : int) -> List[int]:
     """
     Reads a list of IDs
     """
-    #print("read_id_list")
+    if DEBUG:
+        print("read_id_list")
     id_list = []
-    for i in range(0, n):
+    for _i in range(0, n):
         id_list.append(read_varsint64(ta_struct))
     return id_list
 
@@ -80,7 +96,8 @@ def parse_point(ta_struct : DecoderContext) -> GeometryShape:
     Returns:
         GeometryShape - coordinates for the single point that was read
     """
-    #print("parse_point")
+    if DEBUG:
+        print("parse_point")
     return GeometryShape(type = GeometryType.POINT, coordinates = read_pa(ta_struct, 1))
 
 
@@ -91,9 +108,14 @@ def parse_line(ta_struct : DecoderContext) -> GeometryShape:
     Returns:
         GeometryShape - coordinates for a piecewise linear series of points
     """
-    #print("parse_line")
+    if DEBUG:
+        print("parse_line")
+    _type = GeometryType.LINESTRING
     npoints = read_varint64(ta_struct)
-    return GeometryShape(type = GeometryType.LINESTRING, coordinates = read_pa(ta_struct, npoints))
+    coords = read_pa(ta_struct, npoints)
+    if DEBUG:
+        print(f"parse_line -> {_type},{coords}")
+    return GeometryShape(type = _type, coordinates = coords)
 
 def parse_polygon(ta_struct : DecoderContext) -> GeometryShape:
     """
@@ -102,10 +124,11 @@ def parse_polygon(ta_struct : DecoderContext) -> GeometryShape:
     Returns:
         GeometryShape - coordinates for a series of polygon rings
     """
-    #print("parse_polygon")
+    if DEBUG:
+        print("parse_polygon")
     coords = []
     nrings = read_varint64(ta_struct)
-    for ring in range(0, nrings):
+    for _ring in range(0, nrings):
         coords.append(parse_line(ta_struct))
     return GeometryShape(type = GeometryType.POLYGON, coordinates = coords)
 
@@ -114,27 +137,31 @@ def parse_multi(ta_struct : DecoderContext,
     """
     Reads and parses bytes that form a multi-entity geometry
     """
-    #print("parse_multi")
+    if DEBUG:
+        print("parse_multi")
     if ta_struct.type is None: raise ValueError("Can't parse unknown type")
-    type = ta_struct.type
+    _type = ta_struct.type
     ngeoms = read_varint64(ta_struct)
     geoms : List[GeometryShape] = []
     id_list = []
     if ta_struct.has_idlist:
         id_list = read_id_list(ta_struct, ngeoms)
 
-    for i in range(0, ngeoms):
+    for _i in range(0, ngeoms):
         geo = parser(ta_struct)
         geoms.append(geo)
 
+    if DEBUG:
+        print(f"parse_multi -> {_type},{id_list},{geoms}")
     return GeometryShape(
-        type=type,
+        type=_type,
         ids=id_list,
         geoms=geoms
     )
 
 def parse_collection(ta_struct : DecoderContext) -> GeometryShape:
-    #print("parse_collection")
+    if DEBUG:
+        print("parse_collection")
     if ta_struct.type is None: raise ValueError("Can't parse unknown type")
     geom_type = ta_struct.type
     ngeoms = read_varint64(ta_struct)
@@ -143,19 +170,21 @@ def parse_collection(ta_struct : DecoderContext) -> GeometryShape:
     if ta_struct.has_idlist:
         id_list = read_id_list(ta_struct, ngeoms)
 
-    for i in range(0, ngeoms):
+    for _i in range(0, ngeoms):
         geo = read_buffer(ta_struct)
         geoms.append(geo)
 
-    return GeometryShape(
+    shape = GeometryShape(
         type = geom_type,
         ids = id_list,
-        ndims = ta_struct.ndims,
-        geoms = geoms
+        geoms = geoms,
+        ndims = ta_struct.ndims
     )
+    return shape
 
 def read_objects(ta_struct : DecoderContext) -> GeometryShape:
-    #print("read_objects")
+    if DEBUG:
+        print("read_objects")
     type = ta_struct.type
     for i in range(0, ta_struct.ndims + 1):
         ta_struct.refpoint[i] = 0
@@ -185,7 +214,8 @@ def read_objects(ta_struct : DecoderContext) -> GeometryShape:
 
 
 def read_buffer(ta_struct : DecoderContext) -> GeometryShape:
-    #print("read_buffer")
+    if DEBUG:
+        print("read_buffer")
     has_z = 0
     has_m = 0
 
@@ -242,4 +272,6 @@ def read_buffer(ta_struct : DecoderContext) -> GeometryShape:
             bbox[i + ndims] = max
         ta_struct.bbox = bbox
 
-    return read_objects(ta_struct)
+    gshape = read_objects(ta_struct)
+    gshape.ndims = ta_struct.ndims
+    return gshape
