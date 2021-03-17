@@ -228,6 +228,10 @@ def read_buffer(ta_struct : DecoderContext) -> GeometryShape:
     ta_struct.factors[0] = precision_xy
     ta_struct.factors[1] = precision_xy
 
+    if DEBUG: 
+        print(f" - precision_xy = {precision_xy}")
+        print(f" - type = {ta_struct.type}")
+
     # Metadata header
     flag = ta_struct.next()
 
@@ -235,6 +239,12 @@ def read_buffer(ta_struct : DecoderContext) -> GeometryShape:
     ta_struct.has_size = ((flag & 0x02) != 0)
     ta_struct.has_idlist = ((flag & 0x04) != 0)
     ta_struct.is_empty = ((flag & 0x10) != 0)
+
+    if DEBUG:
+        print(f" - has_bbox = {ta_struct.has_bbox}")
+        print(f" - has_size = {ta_struct.has_size}")
+        print(f" - has_idlist = {ta_struct.has_idlist}")
+        print(f" - is_empty = {ta_struct.is_empty}")
 
     extended_dims = (flag & 0x08) != 0
 

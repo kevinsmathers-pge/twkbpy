@@ -139,22 +139,18 @@ class JsonFormatter:
         assert(ndims != 0)
         return self.create_geometry(GeometryType.LINESTRING, self.to_coords(coordinates, ndims), ndims)
 
-
     def create_polygon(self, coordinates : List[float], ndims):
         assert(ndims != 0)
         coords = self.to_coords(coordinates, ndims)
         return self.create_geometry(GeometryType.POLYGON, coords, ndims)
 
-
     def create_multipoint(self, geoms : List[GeometryShape], ids : List[int], ndims : int):
         assert(ndims != 0)
         return self.create_features_from_multi(GeometryType.POINT, geoms, ids, ndims)
 
-
     def create_multilinestring(self, geoms : List[GeometryShape], ids : List[int], ndims : int):
         assert(ndims != 0)
         return self.create_features_from_multi(GeometryType.LINESTRING, geoms, ids, ndims)
-
 
     def create_multipolygon(self, geoms : List[GeometryShape], ids : List[int], ndims : int):
         assert(ndims != 0)

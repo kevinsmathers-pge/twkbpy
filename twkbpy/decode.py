@@ -4,7 +4,6 @@ from .geojson_transforms import JsonFormatter
 from .read_buffer import GeometryShape, read_buffer
 from .context import DecoderContext
 
-
 class Decoder:
     def __init__(self):
         pass
